@@ -63,8 +63,9 @@ class CDDApp:
 
     def run(self):
         filelist = self.getFileList()        
-        self.cdd = CodeDupDetect(filelist,100)            
+        self.cdd = CodeDupDetect(filelist,200)
         self.PrintDuplicates()
+        self.cdd.insert_comments()
         
         if( self.options.treemap == True and self.foundMatches()):
             self.ShowDuplicatesTreemap()
