@@ -14,7 +14,7 @@ from rabinkarp import RabinKarp
 from tokenizer import Tokenizer
 import tempfile
 import os
-import hashlib
+import shutil
 
 class CodeDupDetect:
 	def __init__(self,filelist, minmatch=100):
@@ -61,27 +61,29 @@ class CodeDupDetect:
 
 	def insert_comments(self):
 		begin_no = 0
-		for matches in self.findcopies():
-			infostring = ' '.join(['%s:%i-%i'%(f.srcfile(),f.getStartLine(),f.getLineCount()) for f in matches])
+		for matches in sorted(self.findcopies(),reverse=True,key=lambda x:x.matchedlines):
 			for match in matches:
 				fn = match.srcfile()
-				fn_dup = '%s.dup'%fn
+				infostring = ' '.join(['%s:%i+%i'%(f.srcfile(),f.getStartLine(),f.getLineCount()) for f in matches if f.srcfile() != fn])
+				tmp_source = tempfile.NamedTemporaryFile(mode='wb', delete=False, prefix='cdd-')
 				with open(fn, 'r') as srcfile:
-					with open(fn_dup, 'wb') as out:
-						for i in range(match.getStartLine()):
-							out.write(srcfile.readline())
-						comment = '//!DUPLICATE BEGIN %i -- %s\n'%(begin_no, infostring)
-						out.write(comment)
-						for i in range(match.getLineCount()):
-							line = srcfile.readline()
-							out.write(line)
-							with open('/tmp/%i.dup'%begin_no, 'a') as dup:
-								dup.write(line)
-						comment = '//!DUPLICATE END %i\n'%begin_no
-						out.write(comment)
+					for i in range(match.getStartLine()):
+						tmp_source.write(srcfile.readline())
+					comment = '//!DUPLICATE BEGIN %i -- %s\n'%(begin_no, infostring)
+					tmp_source.write(comment)
+					for i in range(match.getLineCount()):
 						line = srcfile.readline()
-						while line:
-							out.write(line)
-							line = srcfile.readline()
-				os.rename(fn_dup, fn)
+						tmp_source.write(line)
+						with open('/tmp/%i.dup'%begin_no, 'a') as dup:
+							dup.write(line)
+					comment = '//!DUPLICATE END %i\n'%begin_no
+					tmp_source.write(comment)
+					line = srcfile.readline()
+					while line:
+						tmp_source.write(line)
+						line = srcfile.readline()
+				#this should also work on windows
+				tmp_source_name = tmp_source.name
+				tmp_source.close()
+				shutil.copy(tmp_source_name, fn)
 				begin_no += 1
