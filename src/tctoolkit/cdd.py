@@ -63,9 +63,10 @@ class CDDApp:
 
     def run(self):
         filelist = self.getFileList()        
-        self.cdd = CodeDupDetect(filelist,200)
+        self.cdd = CodeDupDetect(filelist,self.options.minimum)
         self.PrintDuplicates()
-        self.cdd.insert_comments()
+        if self.options.comments:
+            self.cdd.insert_comments()
         
         if( self.options.treemap == True and self.foundMatches()):
             self.ShowDuplicatesTreemap()
@@ -281,8 +282,12 @@ def RunMain():
                       help="find duplications with files matching the pattern")
     parser.add_option("-t", "--treemap", action="store_true", dest="treemap", default=False,
                       help="display the duplication as treemap")
+    parser.add_option("-c", "--comments", action="store_true", dest="comments", default=False,
+                      help="Mark duplicate patterns in-source with c-style comment.")
     parser.add_option("-f", "--file", dest="filename", default=None,
                       help="output file name. This is simple text file")
+    parser.add_option("-m", "--minimum", dest="minimum", default=100, type="int",
+                      help="Minimum token count for matched patterns.")
     (options, args) = parser.parse_args()
     
     if( len(args) < 1):
