@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 '''
 Code Duplication Detector
 using the Rabin Karp algorithm to detect duplicates
@@ -12,9 +13,15 @@ TC Toolkit is hosted at http://code.google.com/p/tctoolkit/
 import matchstore
 from rabinkarp import RabinKarp
 from tokenizer import Tokenizer
+
+
 import tempfile
 import os
 import shutil
+from pygments import highlight
+from pygments.lexers import CppLexer
+from pygments.formatters import HtmlFormatter
+
 
 class CodeDupDetect:
 	def __init__(self,filelist, minmatch=100):
@@ -59,12 +66,12 @@ class CodeDupDetect:
 
 		return(exactmatches)
 
-	def insert_comments(self):
+	def insert_comments(self, dirname):
 		begin_no = 0
 		for matches in sorted(self.findcopies(),reverse=True,key=lambda x:x.matchedlines):
 			for match in matches:
 				fn = match.srcfile()
-				infostring = ' '.join(['%s:%i+%i'%(f.srcfile(),f.getStartLine(),f.getLineCount()) for f in matches if f.srcfile() != fn])
+				infostring = ' '.join(['%s:%i+%i'%(f.srcfile(),f.getStartLine(),f.getLineCount()) for f in matches if f.srcfile() != fn]).replace(dirname, '')
 				tmp_source = tempfile.NamedTemporaryFile(mode='wb', delete=False, prefix='cdd-')
 				with open(fn, 'r') as srcfile:
 					for i in range(match.getStartLine()):
@@ -87,3 +94,29 @@ class CodeDupDetect:
 				tmp_source.close()
 				shutil.copy(tmp_source_name, fn)
 				begin_no += 1
+
+	def html_output(self,outfile_fn):
+		def code(match):
+			with open(match.srcfile(), 'rb') as src:
+				for i in range(match.getStartLine()):
+					src.readline()
+				return [src.readline() for i in range(match.getLineCount())]
+		try:
+			import chardet
+			lexer = CppLexer(encoding='chardet')
+		except:
+			lexer = CppLexer(encoding='utf-8')
+		formatter = HtmlFormatter(encoding='utf-8')
+		with open(outfile_fn, 'wb') as out:
+			out.write('<html><head><style type="text/css">%s</style></head><body>'%formatter.get_style_defs('.highlight'))
+			id = 0
+			copies = sorted(self.findcopies(),reverse=True,key=lambda x:x.matchedlines)
+			out.write('<ul>%s</ul>'%'\n'.join(['<a href="#match_%i">Match %i</a>'%(i,i) for i in range(len(copies))]))
+			for matches in copies:
+				out.write('<h1 id="match_%i">MATCH %i</h1><ul>'%(id,id))
+				out.write(' '.join(['<li>%s:%i-%i</li>'%(m.srcfile(), m.getStartLine(), m.getStartLine() + m.getLineCount()) for m in matches]))
+				out.write('</ul><div class="highlight">')
+				highlight(''.join(code([s for s in matches][0])), lexer, formatter, outfile=out)
+				out.write('<a href="#">Up</a></div>')
+				id += 1
+			out.write('</body></html>')

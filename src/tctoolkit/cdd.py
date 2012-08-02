@@ -65,8 +65,10 @@ class CDDApp:
         filelist = self.getFileList()        
         self.cdd = CodeDupDetect(filelist,self.options.minimum)
         self.PrintDuplicates()
+        if self.options.report:
+            self.cdd.html_output(self.options.report)
         if self.options.comments:
-            self.cdd.insert_comments()
+            self.cdd.insert_comments(self.dirname)
         
         if( self.options.treemap == True and self.foundMatches()):
             self.ShowDuplicatesTreemap()
@@ -284,6 +286,8 @@ def RunMain():
                       help="display the duplication as treemap")
     parser.add_option("-c", "--comments", action="store_true", dest="comments", default=False,
                       help="Mark duplicate patterns in-source with c-style comment.")
+    parser.add_option("-r", "--report", dest="report", default=None,
+                      help="Output html to given filename.")
     parser.add_option("-f", "--file", dest="filename", default=None,
                       help="output file name. This is simple text file")
     parser.add_option("-m", "--minimum", dest="minimum", default=100, type="int",
