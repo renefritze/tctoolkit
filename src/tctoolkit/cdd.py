@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 '''
 Code Duplication Detector
 using the Rabin Karp algorithm to detect duplicates
